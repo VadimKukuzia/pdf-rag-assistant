@@ -26,13 +26,13 @@
 ## Архітектура системи
 
 ```text
-[ Користувач / Streamlit UI ]
+     [ Користувач / Streamlit UI ]
              │
              ▼
      [ FastAPI Backend ] ─── ( /api/v1/query, /api/v1/upload )
              │
              ▼
-    [ LangGraph Pipeline ] ─── (Моніторинг: LangSmith)
+     [ LangGraph Pipeline ] ─── (Моніторинг: LangSmith)
              │
       ┌──────┴─────────────────────────────┐
       │  1. Guard Node (Безпека)           │
@@ -63,8 +63,8 @@
 ### 1. Клонування репозиторію та створення venv
 
 ```bash
-git clone 
-cd rag-assistant
+git clone https://github.com/VadimKukuzia/pdf-rag-assistant.git
+cd pdf-rag-assistant
 
 python -m venv venv
 # Linux/macOS:
@@ -113,17 +113,18 @@ streamlit run app.py
 
 ## 📸 Скріншоти та демонстрація
 
-### 💬 Інтерактивний чат із джерелами
-
-
-
 ### 📂 Панель завантаження та індексації PDF
+<img width="1763" height="955" alt="Screenshot_26-7-2026_221841_localhost" src="https://github.com/user-attachments/assets/462c5c4c-4461-406f-9ecc-ab8f6a634dc3" />
 
-
+### 💬 Інтерактивний чат із джерелами
+<img width="1514" height="644" alt="1" src="https://github.com/user-attachments/assets/0486afe4-cc8e-4456-9810-b3424da8b6b3" />
+<img width="1499" height="789" alt="3" src="https://github.com/user-attachments/assets/c649295c-929f-4204-bf1e-5ca02de72d8d" />
+<img width="1505" height="582" alt="2" src="https://github.com/user-attachments/assets/a44414e0-3825-440b-9550-b3ef7e04b238" />
 
 ### 🌳 Трейсинг у LangSmith
-
-
+<img width="1513" height="822" alt="1_1" src="https://github.com/user-attachments/assets/df927e52-0240-4b57-8bc6-475f85ec98df" />
+<img width="1515" height="816" alt="1_2" src="https://github.com/user-attachments/assets/ca979d8c-efc2-468d-8d4c-1238046adf33" />
+<img width="1512" height="809" alt="1_3" src="https://github.com/user-attachments/assets/51559bca-5101-4ea7-b1e2-48f26af1921f" />
 
 ---
 
