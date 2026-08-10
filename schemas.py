@@ -1,4 +1,4 @@
-from typing import List, Optional, TypedDict
+from typing import List, Optional, TypedDict, Any
 from pydantic import BaseModel, Field
 from langchain_core.documents import Document
 
@@ -45,11 +45,31 @@ class IngestResponse(BaseModel):
     collection_name: str = Field(..., description="Назва колекції в ChromaDB")
 
 
+class ChatMessage(BaseModel):
+    """Повідомлення в діалозі з агентом."""
+    
+    role: str = Field(..., description="Роль відправника: 'user' або 'assistant'")
+    content: str = Field(..., description="Текст повідомлення")
+
+
+class AgentChatRequest(BaseModel):
+    """Запит до діалогового агента з підтримкою сесій."""
+    
+    session_id: str = Field(default="default_session", description="Унікальний ідентифікатор сесії чату")
+    message: str = Field(..., description="Нове повідомлення від користувача")
+
+
+class AgentChatResponse(BaseModel):
+    """Відповідь від діалогового агента."""
+    
+    session_id: str = Field(..., description="Ідентифікатор сесії чату")
+    answer: str = Field(..., description="Підсумкова відповідь агента")
+    used_tools: List[str] = Field(default_factory=list, description="Перелік використаних тулзів під час генерації")
+
+
 class GraphState(TypedDict):
     """
     Контейнер стану (State), який передається між вузлами (Nodes) графа LangGraph.
-    
-    Кожна нода отримує поточний GraphState, модифікує його та повертає далі за ланцюжком.
     """
     
     query: str                             # Початковий запит користувача
