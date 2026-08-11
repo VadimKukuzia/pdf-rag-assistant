@@ -1,8 +1,8 @@
 from typing import Dict, Any
 from langgraph.graph import StateGraph, END
 
-from schemas import GraphState
-from nodes import (
+from app.model.schemas import GraphState
+from app.rag.nodes import (
     guard_node,
     rephraser_node,
     retriever_node,

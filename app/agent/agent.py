@@ -7,8 +7,8 @@ try:
 except ImportError:
     from langgraph.prebuilt import create_react_agent as create_agent
 
-from config import settings
-from tools import search_pdf_documents
+from app.core.config import settings
+from app.agent.tools import search_pdf_documents
 
 SYSTEM_PROMPT = (
     "Ви — ввічливий, розумний та професійний AI-асистент.\n"

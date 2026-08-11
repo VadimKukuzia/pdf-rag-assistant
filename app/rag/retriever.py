@@ -3,8 +3,8 @@ from langchain_community.retrievers import BM25Retriever
 
 from langchain_classic.retrievers import EnsembleRetriever
 
-from config import settings
-from ingestion import get_vectorstore, get_all_documents
+from app.core.config import settings
+from app.rag.ingestion import get_vectorstore, get_all_documents
 
 
 def get_hybrid_retriever(

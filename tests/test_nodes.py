@@ -1,5 +1,5 @@
-from schemas import GraphState
-from nodes import guard_node, retriever_node, generator_node
+from app.model.schemas import GraphState
+from app.rag.nodes import guard_node, retriever_node, generator_node
 
 print("🔍 Тестування ізольованих вузлів...")
 

@@ -12,16 +12,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from config import policy
-from database import init_db, get_db
-from models import ChatSessionModel, ChatMessageModel
-from schemas import (
+from app.core.config import policy
+from app.core.database import init_db, get_db
+from app.model.models import ChatSessionModel, ChatMessageModel
+from app.model.schemas import (
     QueryRequest, QueryResponse, IngestResponse, SourceChunk,
     AgentChatRequest, AgentChatResponse, ChatMessage, SessionHistoryResponse
 )
-from ingestion import ingest_pdf
-from graph import run_rag_pipeline
-from agent import run_agent_chat
+from app.rag.ingestion import ingest_pdf
+from app.rag.graph import run_rag_pipeline
+from app.agent.agent import run_agent_chat
 
 
 @asynccontextmanager

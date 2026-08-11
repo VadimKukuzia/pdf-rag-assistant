@@ -1,6 +1,6 @@
 import traceback
 from langchain_core.tools import tool
-from graph import run_rag_pipeline
+from app.rag.graph import run_rag_pipeline
 
 
 @tool

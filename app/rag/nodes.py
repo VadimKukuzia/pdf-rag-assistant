@@ -2,11 +2,11 @@ from typing import Dict, Any
 from langchain_core.messages import SystemMessage, HumanMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 
-from config import settings, policy
-from schemas import GraphState
-from ingestion import get_vectorstore
+from app.core.config import settings, policy
+from app.model.schemas import GraphState
+from app.rag.ingestion import get_vectorstore
 
-from retriever import get_hybrid_retriever
+from app.rag.retriever import get_hybrid_retriever
 
 
 def get_llm() -> ChatGoogleGenerativeAI:

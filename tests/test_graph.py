@@ -1,4 +1,4 @@
-from graph import run_rag_pipeline
+from app.rag.graph import run_rag_pipeline
 
 print("🔍 Повне сквозне тестування LangGraph пайплайну...\n")
 
