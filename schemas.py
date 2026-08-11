@@ -1,4 +1,4 @@
-from typing import List, Optional, TypedDict, Any
+from typing import List, Optional, TypedDict
 from pydantic import BaseModel, Field
 from langchain_core.documents import Document
 
@@ -65,6 +65,12 @@ class AgentChatResponse(BaseModel):
     session_id: str = Field(..., description="Ідентифікатор сесії чату")
     answer: str = Field(..., description="Підсумкова відповідь агента")
     used_tools: List[str] = Field(default_factory=list, description="Перелік використаних тулзів під час генерації")
+
+
+class SessionHistoryResponse(BaseModel):
+    """Відповідь із повною історією повідомлень сесії."""
+    session_id: str
+    messages: List[ChatMessage]
 
 
 class GraphState(TypedDict):
