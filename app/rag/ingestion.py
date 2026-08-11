@@ -1,6 +1,6 @@
+import re
 from pathlib import Path
 from typing import Dict, Any, List
-import re
 
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -13,18 +13,13 @@ from app.core.config import settings, policy
 CHROMA_PATH = "./chroma_db"
 
 
-
 def clean_pdf_text(text: str) -> str:
-    """Очищає текст від штучних переносів рядків та зайвих пробілів."""
-    # Об'єднуємо розірвані рядки (якщо рядок не закінчується на розділовий знак або маркер)
     text = re.sub(r'(?<![.:;•!?])\n(?![•\n])', ' ', text)
-    # Нормалізуємо порожні рядки
     text = re.sub(r'\n\s*\n', '\n\n', text)
-    # Прибираємо подвійні пробіли
     return re.sub(r'[ \t]+', ' ', text).strip()
 
+
 def get_embeddings() -> GoogleGenerativeAIEmbeddings:
-    """Повертає модель Google для генерації векторних ембедінгів."""
     return GoogleGenerativeAIEmbeddings(
         model="models/gemini-embedding-001",
         google_api_key=settings.gemini_api_key
@@ -32,7 +27,6 @@ def get_embeddings() -> GoogleGenerativeAIEmbeddings:
 
 
 def get_vectorstore(collection_name: str = "docs") -> Chroma:
-    """Ініціалізує або підключається до існуючої бази ChromaDB."""
     return Chroma(
         collection_name=collection_name,
         embedding_function=get_embeddings(),
@@ -41,39 +35,32 @@ def get_vectorstore(collection_name: str = "docs") -> Chroma:
 
 
 def get_all_documents(collection_name: str = "docs") -> List[Document]:
-    """Витягує всі документи з ChromaDB для ініціалізації BM25 індексу."""
     vectorstore = get_vectorstore(collection_name=collection_name)
     data = vectorstore.get()
 
     documents = []
-    if data and "documents" in data and data["documents"]:
-        for text, metadata in zip(data["documents"], data["metadatas"]):
-            documents.append(Document(page_content=text, metadata=metadata or {}))
+    if data and data.get("documents"):
+        docs = data["documents"]
+        metadatas = data.get("metadatas") or [{}] * len(docs)
+        for text, metadata in zip(docs, metadatas):
+            if text:
+                documents.append(Document(page_content=text, metadata=metadata or {}))
     return documents
 
 
 def ingest_pdf(file_path: str, collection_name: str = "docs") -> Dict[str, Any]:
-    """
-    Приймає шлях до PDF, перевіряє за політиками безпеки,
-    нарізає на чанки та зберігає векторні ембедінги в ChromaDB.
-    """
     path = Path(file_path)
 
     if not path.exists():
         raise FileNotFoundError(f"Файл {file_path} не знайдено.")
 
-    if path.suffix.lower() not in policy["upload_policy"]["allowed_extensions"]:
-        raise ValueError(
-            f"Непідтримуване розширення '{path.suffix}'. "
-            f"Дозволені: {policy['upload_policy']['allowed_extensions']}"
-        )
+    allowed_exts = policy.get("upload_policy", {}).get("allowed_extensions", [".pdf"])
+    if path.suffix.lower() not in allowed_exts:
+        raise ValueError(f"Непідтримуване розширення '{path.suffix}'. Дозволені: {allowed_exts}")
 
-    max_bytes = policy["upload_policy"]["max_file_size_mb"] * 1024 * 1024
-    if path.stat().st_size > max_bytes:
-        raise ValueError(
-            f"Файл занадто великий ({path.stat().st_size / (1024*1024):.2f} MB). "
-            f"Максимальний дозволений розмір: {policy['upload_policy']['max_file_size_mb']} MB"
-        )
+    max_mb = policy.get("upload_policy", {}).get("max_file_size_mb", 10)
+    if path.stat().st_size > max_mb * 1024 * 1024:
+        raise ValueError(f"Файл занадто великий. Максимальний розмір: {max_mb} MB")
 
     loader = PyPDFLoader(str(path))
     documents = loader.load()
@@ -84,9 +71,10 @@ def ingest_pdf(file_path: str, collection_name: str = "docs") -> Dict[str, Any]:
     for doc in documents:
         doc.page_content = clean_pdf_text(doc.page_content)
 
+    rag_settings = policy.get("rag_settings", {})
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=policy["rag_settings"]["chunk_size"],
-        chunk_overlap=policy["rag_settings"]["chunk_overlap"],
+        chunk_size=rag_settings.get("chunk_size", 1000),
+        chunk_overlap=rag_settings.get("chunk_overlap", 200),
         separators=["\n\n", ". ", "\n", " ", ""]
     )
     chunks = text_splitter.split_documents(documents)

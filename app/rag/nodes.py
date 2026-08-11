@@ -1,28 +1,43 @@
+import logging
 from typing import Dict, Any
 from langchain_core.messages import SystemMessage, HumanMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 
 from app.core.config import settings, policy
 from app.model.schemas import GraphState
-from app.rag.ingestion import get_vectorstore
-
 from app.rag.retriever import get_hybrid_retriever
 
+logger = logging.getLogger(__name__)
 
-def get_llm() -> ChatGoogleGenerativeAI:
-    """Повертає ініціалізований об'єкт Gemini LLM."""
+
+def get_llm(temperature: float = 0.0) -> ChatGoogleGenerativeAI:
     return ChatGoogleGenerativeAI(
         model=settings.model_name,
         google_api_key=settings.gemini_api_key,
-        temperature=0
+        temperature=temperature
     )
 
 
+def _extract_text(content: Any) -> str:
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts = []
+        for item in content:
+            if isinstance(item, str):
+                parts.append(item)
+            elif isinstance(item, dict) and "text" in item:
+                parts.append(item["text"])
+        return "".join(parts)
+    if isinstance(content, dict) and "text" in content:
+        return content["text"]
+    return str(content)
+
+
 def guard_node(state: GraphState) -> Dict[str, Any]:
-    """Перевіряє запит на prompt injection та відповідність суворим лімітам довжини."""
-    query = state["query"]
-    blocked_keywords = policy["security"]["prompt_injection"]["blocked_keywords"]
-    max_length = policy["security"]["prompt_injection"]["max_prompt_length"]
+    query = state.get("query", "")
+    max_length = policy.get("security", {}).get("prompt_injection", {}).get("max_prompt_length", 1000)
+    blocked_keywords = policy.get("security", {}).get("prompt_injection", {}).get("blocked_keywords", [])
 
     if len(query) > max_length:
         return {
@@ -44,63 +59,63 @@ def guard_node(state: GraphState) -> Dict[str, Any]:
 
 
 def rephraser_node(state: GraphState) -> Dict[str, Any]:
-    """Переформульовує запит користувача для покращення якості векторного пошуку."""
     if not state.get("is_safe", True):
         return {}
 
-    query = state["query"]
-    llm = get_llm()
-
+    query = state.get("query", "")
     system_prompt = (
         "Ти — модуль очищення запитів для пошукової RAG-системи.\n"
-    "Твоє єдине завдання — зробити запит користувача чітким та автономним, розкривши займенники з історії бесіди (якщо вони є).\n\n"
-    "СУВОРІ ПРАВИЛА:\n"
-    "1. НЕ ДОДАВАЙ загальних термінів, наукових штампів чи слів, яких не було у запиті (наприклад: 'методи комп'ютерного зору', 'теорія обробки', 'етапи даних').\n"
-    "2. Зберігай оригінальне формулювання та термінологію користувача якомога точніше.\n"
-    "3. Якщо запит і так чіткий і не містить відсилань до минулих повідомлень, ПОВЕРНИ ЙОГО БЕЗ ЗМІН.\n\n"
-
+        "Твоє завдання — зробити запит чітким та автономним, розкривши займенники з контексту.\n\n"
+        "СУВОРІ ПРАВИЛА:\n"
+        "1. НЕ ДОДАВАЙ загальних термінів чи наукових штампів.\n"
+        "2. Зберігай оригінальне формулювання користувача.\n"
+        "3. Якщо запит чіткий, ПОВЕРНИ ЙОГО БЕЗ ЗМІН."
     )
 
     try:
+        llm = get_llm(temperature=0.0)
         response = llm.invoke([
             SystemMessage(content=system_prompt),
             HumanMessage(content=query)
         ])
-        
-        rephrased = str(response.content).strip()
+        rephrased = _extract_text(response.content).strip()
         return {"query": rephrased if rephrased else query}
-    except Exception:
+    except Exception as e:
+        logger.warning("Rephraser node error, using original query: %s", e)
         return {"query": query}
 
 
-def retriever_node(state: Dict[str, Any]) -> Dict[str, Any]:
-    """Нода для гібридного пошуку контексту."""
-    question = state.get("query") or state.get("question", "")
+def retriever_node(state: GraphState) -> Dict[str, Any]:
+    query = state.get("query", "")
     collection_name = state.get("collection_name", "docs")
 
     hybrid_retriever = get_hybrid_retriever(collection_name=collection_name)
-    docs = hybrid_retriever.invoke(question)
+    docs = hybrid_retriever.invoke(query)
 
     context = "\n\n".join([doc.page_content for doc in docs])
-    sources = list(set([doc.metadata.get("source_file") or doc.metadata.get("source", "документ.pdf") for doc in docs]))
-    
+    sources = list(set([
+        doc.metadata.get("source_file") or doc.metadata.get("source", "документ.pdf") 
+        for doc in docs
+    ]))
+
     return {
-        **state,
         "context": context,
         "documents": docs,
         "retrieved_docs": docs,
-        "source_files": sources  # Заповнюємо список джерел
+        "source_files": sources
     }
+
 
 def generator_node(state: GraphState) -> Dict[str, Any]:
     if not state.get("is_safe", True):
         return {}
 
     docs = state.get("documents", [])
-    query = state["query"]
+    query = state.get("query", "")
 
     if not docs:
-        return {"generation": policy["responses"]["fallback_no_context"]}
+        fallback = policy["responses"]["fallback_no_context"]
+        return {"generation": fallback, "answer": fallback}
 
     context_text = "\n\n---\n\n".join([doc.page_content for doc in docs])
 
@@ -113,53 +128,29 @@ def generator_node(state: GraphState) -> Dict[str, Any]:
     )
 
     try:
-        llm = get_llm()
+        llm = get_llm(temperature=0.2)
         response = llm.invoke([
             SystemMessage(content=system_prompt),
             HumanMessage(content=f"Запитання: {query}")
         ])
-
-        raw_content = response.content
-        clean_text = ""
-
-        if isinstance(raw_content, str):
-            clean_text = raw_content
-        elif isinstance(raw_content, list):
-            extracted_parts = []
-            for part in raw_content:
-                if isinstance(part, dict) and "text" in part:
-                    extracted_parts.append(part["text"])
-                elif isinstance(part, str):
-                    extracted_parts.append(part)
-            clean_text = "".join(extracted_parts)
-        elif isinstance(raw_content, dict) and "text" in raw_content:
-            clean_text = raw_content["text"]
-        else:
-            clean_text = str(raw_content)
-
-        return {"generation": clean_text.strip()}
+        clean_text = _extract_text(response.content).strip()
+        return {"generation": clean_text, "answer": clean_text}
 
     except Exception as e:
-        error_str = str(e)
-        if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str:
-            return {
-                "generation": "⚠️ Тимчасово вичерпано квоту Gemini API (429). Будь ласка, зачекайте 30-60 секунд і спробуйте ще раз."
-            }
+        logger.error("Generator node execution error: %s", e, exc_info=True)
+        if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+            fallback = "⚠️ Тимчасово вичерпано квоту Gemini API (429). Будь ласка, зачекайте 30-60 секунд."
+            return {"generation": fallback, "answer": fallback}
         raise e
 
-def validator_node(state: Dict[str, Any]) -> Dict[str, Any]:
-    """Перевіряє, чи згенерована відповідь повністю відповідає знайденому контексту."""
+
+def validator_node(state: GraphState) -> Dict[str, Any]:
     if not state.get("is_safe", True):
         return state
 
     generation = state.get("generation") or state.get("answer", "")
-    
-    # Підтримуємо обидва варіанти ключів для документів
     docs = state.get("documents") or state.get("retrieved_docs") or []
-    
-    # Якщо context вже є в state — беремо його, інакше збираємо з docs
     context_text = state.get("context") or "\n".join([doc.page_content for doc in docs if hasattr(doc, "page_content")])
-
     fallback_response = policy["responses"]["fallback_no_context"]
 
     if not context_text.strip() or not generation or generation == fallback_response:
@@ -172,21 +163,18 @@ def validator_node(state: Dict[str, Any]) -> Dict[str, Any]:
 
     system_prompt = (
         "Ти — контролер якості RAG-відповідей. Оціни, чи згенерована відповідь базується "
-        "СУВОРО на наданому контексті і чи немає в ній вигаданих фактів (галюцинацій).\n"
-        "Відповідай ТІЛЬКИ одним словом: 'ТАК' (якщо відповідь правдива і з контексту) "
-        "або 'НІ' (якщо є вигадки)."
+        "СУВОРО на наданому контексті і чи немає в ній вигаданих фактів.\n"
+        "Відповідай ТІЛЬКИ одним словом: 'ТАК' або 'НІ'."
     )
-
     user_prompt = f"КОНТЕКСТ:\n{context_text}\n\nЗГЕНЕРОВАНА ВІДПОВІДЬ:\n{generation}"
 
     try:
-        llm = get_llm()
+        llm = get_llm(temperature=0.0)
         res = llm.invoke([
             SystemMessage(content=system_prompt),
             HumanMessage(content=user_prompt)
         ])
-        
-        eval_result = str(res.content).strip().upper()
+        eval_result = _extract_text(res.content).strip().upper()
         if "НІ" in eval_result or "NO" in eval_result:
             return {
                 "generation": fallback_response,
@@ -195,9 +183,8 @@ def validator_node(state: Dict[str, Any]) -> Dict[str, Any]:
                 "is_safe": False
             }
     except Exception as e:
-        print(f"⚠️ Помилка під час валідації: {e}")
+        logger.warning("Validator node check failed: %s", e)
 
-    # Явно повертаємо оновлені ключі, щоб LangSmith бачив Output і context не втрачався
     return {
         "generation": generation,
         "answer": generation,

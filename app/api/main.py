@@ -1,10 +1,7 @@
-from dotenv import load_dotenv
-load_dotenv()
-
 import os
 import re
 import shutil
-from typing import List
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, status
@@ -23,10 +20,11 @@ from app.rag.ingestion import ingest_pdf
 from app.rag.graph import run_rag_pipeline
 from app.agent.agent import run_agent_chat
 
+logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Життєвий цикл додатку: ініціалізація БД при запуску."""
     await init_db()
     yield
 
@@ -35,8 +33,6 @@ app = FastAPI(
     title="RAG Assistant API 🚀",
     description="REST API для пошуку в документації з Agent Tool-Calling та збереженням сесій.",
     version="2.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
     lifespan=lifespan
 )
 
@@ -49,7 +45,7 @@ app.add_middleware(
 )
 
 
-@app.get("/health", tags=["System"], summary="Перевірка статусу API")
+@app.get("/health", tags=["System"])
 async def health_check():
     return {"status": "ok", "service": "RAG Assistant API"}
 
@@ -58,7 +54,6 @@ async def health_check():
     "/api/v1/upload",
     response_model=IngestResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="Завантажити та проіндексувати PDF-документ",
     tags=["Ingestion"]
 )
 async def upload_file(file: UploadFile = File(...)):
@@ -80,6 +75,7 @@ async def upload_file(file: UploadFile = File(...)):
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
+        logger.error("Error during PDF ingestion: %s", e, exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Помилка під час індексації документа: {str(e)}"
@@ -93,7 +89,6 @@ async def upload_file(file: UploadFile = File(...)):
     "/api/v1/chat",
     response_model=AgentChatResponse,
     status_code=status.HTTP_200_OK,
-    summary="Спілкування з Агентом (збереження контексту сесії)",
     tags=["Conversational Agent"]
 )
 async def agent_chat(request: AgentChatRequest, db: AsyncSession = Depends(get_db)):
@@ -119,12 +114,8 @@ async def agent_chat(request: AgentChatRequest, db: AsyncSession = Depends(get_d
     history = [{"role": m.role, "content": m.content} for m in db_messages]
 
     agent_output = run_agent_chat(message=request.message, history=history)
-    answer = agent_output.get("answer", "")
+    answer = str(agent_output.get("answer", ""))
     used_tools = agent_output.get("used_tools", [])
-
-    # Перестраховка: гарантуємо, що answer — це string
-    if not isinstance(answer, str):
-        answer = str(answer)
 
     user_msg = ChatMessageModel(session_id=session_id, role="user", content=request.message)
     assistant_msg = ChatMessageModel(session_id=session_id, role="assistant", content=answer)
@@ -137,11 +128,11 @@ async def agent_chat(request: AgentChatRequest, db: AsyncSession = Depends(get_d
         used_tools=used_tools
     )
 
+
 @app.get(
     "/api/v1/sessions/{session_id}/history",
     response_model=SessionHistoryResponse,
     status_code=status.HTTP_200_OK,
-    summary="Отримати історію повідомлень сесії",
     tags=["Conversational Agent"]
 )
 async def get_session_history(session_id: str, db: AsyncSession = Depends(get_db)):
@@ -163,37 +154,37 @@ async def get_session_history(session_id: str, db: AsyncSession = Depends(get_db
     "/api/v1/query",
     response_model=QueryResponse,
     status_code=status.HTTP_200_OK,
-    summary="Надіслати прямої запит до RAG-пайплайну",
     tags=["Legacy RAG Engine"]
 )
 async def query_rag(request: QueryRequest):
     try:
         final_state = run_rag_pipeline(
-            question=request.query,
-            collection_name="docs"
+            query=request.query,
+            session_id="default_session"
         )
 
         sources = []
-        for doc in final_state.get("retrieved_docs", []):
+        docs = final_state.get("retrieved_docs") or final_state.get("documents", [])
+        for doc in docs:
             raw_source = doc.metadata.get("source_file") or doc.metadata.get("source", "документ.pdf")
             clean_filename = os.path.basename(raw_source).replace("temp_", "")
-            raw_preview = doc.page_content[:350]
-            clean_preview = re.sub(r'\s+', ' ', raw_preview).strip() + "..."
+            clean_preview = re.sub(r'\s+', ' ', doc.page_content[:350]).strip() + "..."
 
             sources.append(
                 SourceChunk(source_file=clean_filename, content_preview=clean_preview)
             )
 
-        answer = final_state.get("answer") or policy["responses"]["fallback_no_context"]
+        answer = final_state.get("answer") or final_state.get("generation") or policy["responses"]["fallback_no_context"]
 
         return QueryResponse(
             query=request.query,
             answer=answer,
             sources=sources,
-            is_safe=True,
+            is_safe=final_state.get("is_safe", True),
             status="success"
         )
     except Exception as e:
+        logger.error("Direct RAG query error: %s", e, exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Помилка під час обробки запиту: {str(e)}"

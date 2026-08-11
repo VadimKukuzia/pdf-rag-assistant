@@ -7,7 +7,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    """Схема конфігурації змінних оточення (.env)."""
     
     gemini_api_key: str = Field(..., validation_alias="GEMINI_API_KEY")
     model_name: str = "gemini-3.1-flash-lite"
