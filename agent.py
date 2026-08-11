@@ -1,8 +1,11 @@
 from typing import List, Dict, Any
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage, AIMessage
-from langchain.agents import create_agent
 
+try:
+    from langchain.agents import create_agent
+except ImportError:
+    from langgraph.prebuilt import create_react_agent as create_agent
 
 from config import settings
 from tools import search_pdf_documents
@@ -18,6 +21,21 @@ SYSTEM_PROMPT = (
 )
 
 
+def _extract_text_content(content: Any) -> str:
+    """Нормалізує content з AI-повідомлення у чисту строку."""
+    if isinstance(content, str):
+        return content
+    elif isinstance(content, list):
+        text_parts = []
+        for part in content:
+            if isinstance(part, str):
+                text_parts.append(part)
+            elif isinstance(part, dict) and "text" in part:
+                text_parts.append(part["text"])
+        return "\n".join(text_parts)
+    return str(content)
+
+
 def get_agent():
     """Ініціалізує Conversational Tool-Calling Агента."""
     llm = ChatGoogleGenerativeAI(
@@ -28,14 +46,18 @@ def get_agent():
     
     tools = [search_pdf_documents]
     
-    
-    agent = create_agent(
-        model=llm,
-        tools=tools,
-        system_prompt=SYSTEM_PROMPT
-    )
-   
-    
+    try:
+        agent = create_agent(
+            model=llm,
+            tools=tools,
+            system_prompt=SYSTEM_PROMPT
+        )
+    except TypeError:
+        agent = create_agent(
+            model=llm,
+            tools=tools,
+            state_modifier=SYSTEM_PROMPT
+        )
         
     return agent
 
@@ -47,14 +69,10 @@ def run_agent_chat(
     message: str,
     history: List[Dict[str, str]] = None
 ) -> Dict[str, Any]:
-    """
-    Приймає повідомлення користувача та історію діалогу,
-    проганяє через Агента та повертає відповідь і перелік викликаних тулзів.
-    """
+    """Приймає повідомлення користувача та історію діалогу, повертає відповідь."""
     history = history or []
     messages = []
 
-    # Відновлюємо історію повідомлень
     for msg in history:
         role = msg.get("role", "user")
         content = msg.get("content", "")
@@ -65,13 +83,16 @@ def run_agent_chat(
 
     messages.append(HumanMessage(content=message))
 
-    # Викликаємо агента
     response = agent_executor.invoke({"messages": messages})
     
     all_messages = response.get("messages", [])
-    final_message = all_messages[-1].content if all_messages else ""
+    
+    if all_messages:
+        raw_content = all_messages[-1].content
+        final_message = _extract_text_content(raw_content)
+    else:
+        final_message = ""
 
-    # Фіксуємо викликані інструменти
     used_tools = []
     for msg in all_messages:
         if hasattr(msg, "tool_calls") and msg.tool_calls:

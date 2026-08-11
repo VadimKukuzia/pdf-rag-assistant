@@ -99,7 +99,6 @@ async def upload_file(file: UploadFile = File(...)):
 async def agent_chat(request: AgentChatRequest, db: AsyncSession = Depends(get_db)):
     session_id = request.session_id or "default_session"
 
-    # Перевіряємо чи існує сесія в БД
     stmt = select(ChatSessionModel).where(ChatSessionModel.session_id == session_id)
     result = await db.execute(stmt)
     chat_session = result.scalars().first()
@@ -109,7 +108,6 @@ async def agent_chat(request: AgentChatRequest, db: AsyncSession = Depends(get_d
         db.add(chat_session)
         await db.commit()
 
-    # Отримуємо історію попередніх повідомлень
     msg_stmt = (
         select(ChatMessageModel)
         .where(ChatMessageModel.session_id == session_id)
@@ -120,12 +118,14 @@ async def agent_chat(request: AgentChatRequest, db: AsyncSession = Depends(get_d
 
     history = [{"role": m.role, "content": m.content} for m in db_messages]
 
-    # Викликаємо Агента
     agent_output = run_agent_chat(message=request.message, history=history)
     answer = agent_output.get("answer", "")
     used_tools = agent_output.get("used_tools", [])
 
-    # Зберігаємо повідомлення в БД
+    # Перестраховка: гарантуємо, що answer — це string
+    if not isinstance(answer, str):
+        answer = str(answer)
+
     user_msg = ChatMessageModel(session_id=session_id, role="user", content=request.message)
     assistant_msg = ChatMessageModel(session_id=session_id, role="assistant", content=answer)
     db.add_all([user_msg, assistant_msg])
@@ -136,7 +136,6 @@ async def agent_chat(request: AgentChatRequest, db: AsyncSession = Depends(get_d
         answer=answer,
         used_tools=used_tools
     )
-
 
 @app.get(
     "/api/v1/sessions/{session_id}/history",

@@ -6,6 +6,8 @@ from config import settings, policy
 from schemas import GraphState
 from ingestion import get_vectorstore
 
+from retriever import get_hybrid_retriever
+
 
 def get_llm() -> ChatGoogleGenerativeAI:
     """Повертає ініціалізований об'єкт Gemini LLM."""
@@ -50,9 +52,13 @@ def rephraser_node(state: GraphState) -> Dict[str, Any]:
     llm = get_llm()
 
     system_prompt = (
-        "Ти — експерт із семантичного пошуку. Твоє завдання — переформулювати запит користувача "
-        "так, щоб він містив чіткі ключові слова для векторного пошуку в документації. "
-        "Збережи суть запитання. Відповідай ВИКЛЮЧНО переформульованим запитом без вступу та лапок."
+        "Ти — модуль очищення запитів для пошукової RAG-системи.\n"
+    "Твоє єдине завдання — зробити запит користувача чітким та автономним, розкривши займенники з історії бесіди (якщо вони є).\n\n"
+    "СУВОРІ ПРАВИЛА:\n"
+    "1. НЕ ДОДАВАЙ загальних термінів, наукових штампів чи слів, яких не було у запиті (наприклад: 'методи комп'ютерного зору', 'теорія обробки', 'етапи даних').\n"
+    "2. Зберігай оригінальне формулювання та термінологію користувача якомога точніше.\n"
+    "3. Якщо запит і так чіткий і не містить відсилань до минулих повідомлень, ПОВЕРНИ ЙОГО БЕЗ ЗМІН.\n\n"
+
     )
 
     try:
@@ -67,24 +73,24 @@ def rephraser_node(state: GraphState) -> Dict[str, Any]:
         return {"query": query}
 
 
-def retriever_node(state: GraphState) -> Dict[str, Any]:
-    """Шукає найрелевантніші чанки документів у векторній базі ChromaDB."""
-    if not state.get("is_safe", True):
-        return {"documents": [], "source_files": []}
+def retriever_node(state: Dict[str, Any]) -> Dict[str, Any]:
+    """Нода для гібридного пошуку контексту."""
+    question = state.get("query") or state.get("question", "")
+    collection_name = state.get("collection_name", "docs")
 
-    query = state["query"]
-    top_k = policy["rag_settings"]["top_k_results"]
+    hybrid_retriever = get_hybrid_retriever(collection_name=collection_name)
+    docs = hybrid_retriever.invoke(question)
 
-    vectorstore = get_vectorstore()
-    docs = vectorstore.similarity_search(query, k=top_k)
-
-    source_files = list(set([doc.metadata.get("source_file", "невідомо") for doc in docs]))
-
+    context = "\n\n".join([doc.page_content for doc in docs])
+    sources = list(set([doc.metadata.get("source_file") or doc.metadata.get("source", "документ.pdf") for doc in docs]))
+    
     return {
+        **state,
+        "context": context,
         "documents": docs,
-        "source_files": source_files
+        "retrieved_docs": docs,
+        "source_files": sources  # Заповнюємо список джерел
     }
-
 
 def generator_node(state: GraphState) -> Dict[str, Any]:
     if not state.get("is_safe", True):
@@ -141,18 +147,28 @@ def generator_node(state: GraphState) -> Dict[str, Any]:
             }
         raise e
 
-def validator_node(state: GraphState) -> Dict[str, Any]:
+def validator_node(state: Dict[str, Any]) -> Dict[str, Any]:
     """Перевіряє, чи згенерована відповідь повністю відповідає знайденому контексту."""
     if not state.get("is_safe", True):
-        return {}
+        return state
 
-    generation = state.get("generation", "")
-    docs = state.get("documents", [])
+    generation = state.get("generation") or state.get("answer", "")
+    
+    # Підтримуємо обидва варіанти ключів для документів
+    docs = state.get("documents") or state.get("retrieved_docs") or []
+    
+    # Якщо context вже є в state — беремо його, інакше збираємо з docs
+    context_text = state.get("context") or "\n".join([doc.page_content for doc in docs if hasattr(doc, "page_content")])
 
-    if not docs or not generation or generation == policy["responses"]["fallback_no_context"]:
-        return {"generation": policy["responses"]["fallback_no_context"]}
+    fallback_response = policy["responses"]["fallback_no_context"]
 
-    context_text = "\n".join([doc.page_content for doc in docs])
+    if not context_text.strip() or not generation or generation == fallback_response:
+        return {
+            "generation": fallback_response,
+            "answer": fallback_response,
+            "context": "",
+            "is_safe": False
+        }
 
     system_prompt = (
         "Ти — контролер якості RAG-відповідей. Оціни, чи згенерована відповідь базується "
@@ -172,8 +188,19 @@ def validator_node(state: GraphState) -> Dict[str, Any]:
         
         eval_result = str(res.content).strip().upper()
         if "НІ" in eval_result or "NO" in eval_result:
-            return {"generation": policy["responses"]["fallback_no_context"]}
-    except Exception:
-        pass
+            return {
+                "generation": fallback_response,
+                "answer": fallback_response,
+                "context": context_text,
+                "is_safe": False
+            }
+    except Exception as e:
+        print(f"⚠️ Помилка під час валідації: {e}")
 
-    return {}
+    # Явно повертаємо оновлені ключі, щоб LangSmith бачив Output і context не втрачався
+    return {
+        "generation": generation,
+        "answer": generation,
+        "context": context_text,
+        "is_safe": True
+    }

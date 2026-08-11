@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import Dict, Any, List
+import re
 
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -12,10 +13,20 @@ from config import settings, policy
 CHROMA_PATH = "./chroma_db"
 
 
+
+def clean_pdf_text(text: str) -> str:
+    """Очищає текст від штучних переносів рядків та зайвих пробілів."""
+    # Об'єднуємо розірвані рядки (якщо рядок не закінчується на розділовий знак або маркер)
+    text = re.sub(r'(?<![.:;•!?])\n(?![•\n])', ' ', text)
+    # Нормалізуємо порожні рядки
+    text = re.sub(r'\n\s*\n', '\n\n', text)
+    # Прибираємо подвійні пробіли
+    return re.sub(r'[ \t]+', ' ', text).strip()
+
 def get_embeddings() -> GoogleGenerativeAIEmbeddings:
     """Повертає модель Google для генерації векторних ембедінгів."""
     return GoogleGenerativeAIEmbeddings(
-        model="models/embedding-001",
+        model="models/gemini-embedding-001",
         google_api_key=settings.gemini_api_key
     )
 
@@ -70,10 +81,13 @@ def ingest_pdf(file_path: str, collection_name: str = "docs") -> Dict[str, Any]:
     if not documents:
         raise ValueError("PDF-файл порожній або з нього не вдалося зчитати текст.")
 
+    for doc in documents:
+        doc.page_content = clean_pdf_text(doc.page_content)
+
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=policy["rag_settings"]["chunk_size"],
         chunk_overlap=policy["rag_settings"]["chunk_overlap"],
-        separators=["\n\n", "\n", " ", ""]
+        separators=["\n\n", ". ", "\n", " ", ""]
     )
     chunks = text_splitter.split_documents(documents)
 

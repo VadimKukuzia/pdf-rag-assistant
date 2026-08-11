@@ -1,9 +1,7 @@
 from typing import Any
 from langchain_community.retrievers import BM25Retriever
-try:
-    from langchain.retrievers import EnsembleRetriever
-except ImportError:
-    from langchain.retrievers.ensemble import EnsembleRetriever
+
+from langchain_classic.retrievers import EnsembleRetriever
 
 from config import settings
 from ingestion import get_vectorstore, get_all_documents

@@ -8,24 +8,29 @@ st.set_page_config(page_title="PDF RAG Conversational Assistant", page_icon="�
 st.title("🤖 PDF RAG Conversational Assistant")
 st.caption("Діалоговий агент із підтримкою сесій та автоматичним викликом Hybrid RAG Tool")
 
+
+def fetch_history(sess_id: str):
+    """Отримує історію повідомлень з бекенду за session_id."""
+    try:
+        res = requests.get(f"{API_BASE_URL}/api/v1/sessions/{sess_id}/history")
+        if res.status_code == 200:
+            return res.json().get("messages", [])
+    except Exception as e:
+        st.sidebar.error(f"Помилка з'єднання з API: {e}")
+    return []
+
+
 # Sidebar
 with st.sidebar:
     st.header("⚙️ Налаштування сесії")
     
     session_id = st.text_input("Session ID", value="default_session")
     
-    if st.button("🔄 Оновити / Завантажити історію"):
-        st.session_state.messages = []
-        try:
-            res = requests.get(f"{API_BASE_URL}/api/v1/sessions/{session_id}/history")
-            if res.status_code == 200:
-                history_data = res.json().get("messages", [])
-                st.session_state.messages = history_data
-                st.success("Історію завантажено!")
-            else:
-                st.warning("Сесія порожня або не знайдена.")
-        except Exception as e:
-            st.error(f"Помилка з'єднання з API: {e}")
+    # Кнопка для ручного примусового оновлення
+    if st.button("🔄 Оновити історію"):
+        st.session_state.messages = fetch_history(session_id)
+        st.session_state.last_session_id = session_id
+        st.success("Історію оновлено!")
 
     st.divider()
     st.header("📄 Завантаження PDF")
@@ -45,9 +50,10 @@ with st.sidebar:
                 except Exception as e:
                     st.error(f"Помилка підключення: {e}")
 
-# Ініціалізація стану чату
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+# АВТОМАТИЧНЕ ПІДВАНТАЖЕННЯ: спрацьовує при першому заході або зміні Session ID
+if "last_session_id" not in st.session_state or st.session_state.last_session_id != session_id:
+    st.session_state.messages = fetch_history(session_id)
+    st.session_state.last_session_id = session_id
 
 # Відображення повідомлень
 for msg in st.session_state.messages:
@@ -77,11 +83,15 @@ if prompt := st.chat_input("Запитайте щось або попросіт�
 
                     # Індикатор виклику тулзи
                     if "search_pdf_documents" in used_tools:
-                        st.info("🛠️ **Агент визвав інструмент:** `search_pdf_documents` (Hybrid Search)")
+                        st.info("🛠️ **Агент викликав інструмент:** `search_pdf_documents` (Hybrid Search)")
 
                     st.write(answer)
                     st.session_state.messages.append({"role": "assistant", "content": answer})
                 else:
-                    st.error(f"Помилка API: {res.json().get('detail')}")
+                    try:
+                        error_detail = res.json().get("detail", res.text)
+                    except Exception:
+                        error_detail = res.text or f"HTTP Status {res.status_code}"
+                    st.error(f"Помилка API ({res.status_code}): {error_detail}")
             except Exception as e:
                 st.error(f"Не вдалося виконати запит: {e}")
