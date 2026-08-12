@@ -1,0 +1,30 @@
+services:
+  api:
+    build: .
+    container_name: rag_fastapi_app
+    restart: unless-stopped
+    command: uvicorn app.api.main:app --host 0.0.0.0 --port 8000
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=sqlite+aiosqlite:///./chat_history.db
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./chroma_db:/app/chroma_db
+      - sqlite_data:/app
+
+  ui:
+    build: .
+    container_name: rag_streamlit_ui
+    restart: unless-stopped
+    command: streamlit run ui/chat.py --server.port 8501 --server.address 0.0.0.0
+    environment:
+      - API_BASE_URL=http://api:8000
+    ports:
+      - "8501:8501"
+    depends_on:
+      - api
+
+volumes:
+  sqlite_data:
