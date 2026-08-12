@@ -10,6 +10,11 @@ def search_pdf_documents(query: str) -> str:
     """Шукає специфічну інформацію, факти, деталі або роз'яснення у завантажених PDF-документах."""
     try:
         result = run_rag_pipeline(query)
+        if not result.get("is_safe", True):
+            return result.get(
+                "generation",
+                "Запит відхилено системою безпеки."
+            )
         context = result.get("context", "")
 
         if not context or not context.strip():
