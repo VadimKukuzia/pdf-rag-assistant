@@ -65,11 +65,12 @@ rag-assistant/
 │   │   ├── models.py
 │   │   └── schemas.py
 │   └── rag/            # Ядро RAG (LangGraph nodes, graph, hybrid retriever, ingestion)
+│       ├── bm25_cache.py
 │       ├── graph.py
 │       ├── ingestion.py
 │       ├── nodes.py
 │       └── retriever.py
-├── data/               # Приклади PDF-документів
+├── data_sample/               # Приклади PDF-документів
 ├── tests/              # Набір тестів та перевірок
 │   ├── test_api.py
 │   ├── test_graph.py

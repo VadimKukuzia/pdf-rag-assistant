@@ -5,3 +5,4 @@ __pycache__/
 chroma_db/
 *.pyc
 chat_history.db
+data

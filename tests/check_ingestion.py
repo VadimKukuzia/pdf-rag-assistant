@@ -3,7 +3,7 @@ from app.rag.ingestion import ingest_pdf, get_vectorstore
 
 print("🔍 Перевірка модуля індексації та ChromaDB...")
 
-TEST_PDF_PATH = "./data/sample.pdf" 
+TEST_PDF_PATH = "./data_sample/sample.pdf" 
 
 try:
     print(f"\n📥 Завантаження та нарізка файлу '{TEST_PDF_PATH}'...")
