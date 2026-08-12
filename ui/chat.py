@@ -21,15 +21,8 @@ def fetch_history(sess_id: str):
 
 
 with st.sidebar:
-    st.header("⚙️ Налаштування сесії")
-    session_id = st.text_input("Session ID", value="default_session")
+    session_id = "default_session"
 
-    if st.button("🔄 Оновити історію"):
-        st.session_state.messages = fetch_history(session_id)
-        st.session_state.last_session_id = session_id
-        st.success("Історію оновлено!")
-
-    st.divider()
     st.header("📄 Завантаження PDF")
     uploaded_file = st.file_uploader("Оберіть PDF-файл", type=["pdf"])
 
