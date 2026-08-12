@@ -1,6 +1,6 @@
 # RAG Assistant
 
-> **Production-Ready Conversational RAG-Агент** на базі **LangGraph**, **FastAPI**, **Hybrid Search (ChromaDB + BM25)** та **Gemini API** з інтелектуальним викликом інструментів (Tool-Calling), збереженням історії сесій в **SQLite**, повною контейнеризацією в **Docker** та трейсингом у **LangSmith**.
+> **Conversational RAG Agent with Tool Calling & Hybrid Search** на базі **LangGraph**, **FastAPI**, **Hybrid Search (ChromaDB + BM25)** та **Gemini API** з інтелектуальним викликом інструментів (Tool-Calling), збереженням історії сесій в **SQLite**, повною контейнеризацією в **Docker** та трейсингом у **LangSmith**.
 
 ![Python Version](https://img.shields.io/badge/Python-3.12%2B-blue)
 ![Framework](https://img.shields.io/badge/LangGraph-Orchestration-orange)
@@ -82,7 +82,6 @@ rag-assistant/
 ├── .gitignore
 ├── Dockerfile
 ├── docker-compose.yml
-├── pytest.ini
 ├── requirements.txt
 └── README.md
 
