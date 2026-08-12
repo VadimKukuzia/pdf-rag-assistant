@@ -13,8 +13,8 @@
 
 На відміну від класичних жорстких RAG-пайплайнів, у цій версії реалізовано паттерн **Conversational Tool-Calling Agent**:
 
-1. **Звичайні питання та привітання** агент обробляє самостійно в межах контексту бесіди, заощаджуючи токени та час.
-2. **Питання щодо змісту PDF** автоматично тригерують виклик інструменту `search_pdf_documents`, який запускає ізольований графовий **Hybrid RAG Pipeline** (Sparse + Dense Search).
+1. **Для звичайного діалогу** агент відповідає без виклику RAG-інструменту..
+2. **Питання щодо змісту PDF** автоматично тригерять виклик інструменту `search_pdf_documents`, який запускає ізольований графовий **Hybrid RAG Pipeline** (Sparse + Dense Search).
 
 
 ## 🏗️ Архітектура системи
@@ -70,10 +70,11 @@ rag-assistant/
 │       ├── nodes.py
 │       └── retriever.py
 ├── data/               # Приклади PDF-документів
-├── tests/              # Набір автотестів (Pytest)
+├── tests/              # Набір тестів та перевірок
 │   ├── test_api.py
 │   ├── test_graph.py
-│   ├── test_ingestion.py
+│   ├── check_setup.py
+│   ├── check_ingestion.py
 │   └── test_nodes.py
 ├── ui/                 # Streamlit чат-інтерфейс
 │   └── chat.py
