@@ -195,21 +195,26 @@ python -m pytest -v
 ### 💬 Спілкування з Агентом (покроковий сценарій)
 
 1. **Старт бесіди та звичайний діалог (БЕЗ виклику RAG-інструменту):**
+<img width="1763" height="955" alt="Screenshot_12-8-2026_14435_localhost" src="https://github.com/user-attachments/assets/3add9bdd-77f0-408d-962e-a23f94df6b42" />
 
 2. **Виклик при відсутньому файлі:**
+<img width="1763" height="955" alt="Screenshot_12-8-2026_144847_localhost" src="https://github.com/user-attachments/assets/0a7f1985-e590-459a-897b-c7c313479e36" />
 
 3. **Завантаження та обробка файлу:**
+<img width="1763" height="955" alt="Screenshot_12-8-2026_14495_localhost" src="https://github.com/user-attachments/assets/b943f6ed-3567-42fa-9dbc-6f8e97ffddc6" />
 
 4. **Відповідь на основі контексту з джерелами:**
+<img width="1763" height="955" alt="Screenshot_12-8-2026_144936_localhost" src="https://github.com/user-attachments/assets/0d93728b-35a4-473d-8a8e-422924b37374" />
 
 5. **Відхилення спроби Prompt Injection / Небезпечного запиту:**
-
+<img width="1763" height="955" alt="Screenshot_12-8-2026_145025_localhost" src="https://github.com/user-attachments/assets/4f1e47f4-5a40-489e-848a-7c3a1634a029" />
 
 ---
 
 ### 🌳 Трейсинг виконання в LangSmith
 
 На скріншоті видно наскрізний виклик: від звернення до Агента, виклику `search_pdf_documents` до виконання всіх 5 нод графа LangGraph (Guard -> Rephraser -> EnsembleRetriever [Dense + BM25] -> Generator -> Validator):
+<img width="1364" height="732" alt="Screenshot_12-8-langsmith2" src="https://github.com/user-attachments/assets/1d4d9fd2-3541-47ab-974d-15227a477134" />
 
 ---
 
