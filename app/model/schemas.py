@@ -77,10 +77,17 @@ class GraphState(TypedDict):
     """
     Контейнер стану (State), який передається між вузлами (Nodes) графа LangGraph.
     """
-    
-    query: str                             # Початковий запит користувача
-    documents: List[Document]              # Отримані з ChromaDB чанки
-    generation: Optional[str]              # Підсумкова текстова відповідь від LLM
-    is_safe: bool                          # Чи пройшов запит перевірку на prompt injection
-    rejection_reason: Optional[str]        # Причина відхилення, якщо is_safe=False
-    source_files: List[str]                # Перелік унікальних назв файлів-джерел
+
+    query: str
+    collection_name: str
+
+    context: str
+    documents: List[Document]
+    retrieved_docs: List[Document]
+
+    generation: Optional[str]
+    answer: Optional[str]
+
+    is_safe: bool
+    rejection_reason: Optional[str]
+    source_files: List[str]

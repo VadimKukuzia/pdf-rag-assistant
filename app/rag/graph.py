@@ -54,6 +54,7 @@ def run_rag_pipeline(query: str, session_id: str = "default_session") -> Dict[st
         "documents": [],
         "retrieved_docs": [],
         "generation": "",
+        "answer": None,
         "is_safe": True,
         "rejection_reason": None,
         "source_files": []
