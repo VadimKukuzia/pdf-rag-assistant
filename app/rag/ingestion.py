@@ -8,6 +8,7 @@ from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
 
+from app.rag.bm25_cache import invalidate_bm25
 from app.core.config import settings, policy
 
 CHROMA_PATH = "./chroma_db"
@@ -84,6 +85,8 @@ def ingest_pdf(file_path: str, collection_name: str = "docs") -> Dict[str, Any]:
 
     vectorstore = get_vectorstore(collection_name=collection_name)
     vectorstore.add_documents(chunks)
+    
+    invalidate_bm25(collection_name)
 
     return {
         "status": "success",
