@@ -7,18 +7,21 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    """Схема конфігурації змінних оточення (.env)."""
     
     gemini_api_key: str = Field(..., validation_alias="GEMINI_API_KEY")
     model_name: str = "gemini-3.1-flash-lite"
     
+    # Hybrid Search Settings
+    hybrid_top_k: int = 4
+    dense_weight: float = 0.5
+    sparse_weight: float = 0.5
+
     # LangSmith
     langchain_tracing_v2: bool = Field(True, validation_alias="LANGCHAIN_TRACING_V2")
     langchain_endpoint: str = Field("https://api.smith.langchain.com", validation_alias="LANGCHAIN_ENDPOINT")
     langchain_api_key: str | None = Field(None, validation_alias="LANGCHAIN_API_KEY")
     langchain_project: str = Field("rag-assistant", validation_alias="LANGCHAIN_PROJECT")
 
-    # Зчитування файлу .env
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

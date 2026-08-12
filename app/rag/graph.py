@@ -1,8 +1,8 @@
 from typing import Dict, Any
 from langgraph.graph import StateGraph, END
 
-from schemas import GraphState
-from nodes import (
+from app.model.schemas import GraphState
+from app.rag.nodes import (
     guard_node,
     rephraser_node,
     retriever_node,
@@ -12,20 +12,10 @@ from nodes import (
 
 
 def check_safety_router(state: GraphState) -> str:
-    """
-    Визначає наступний крок після Guard-ноди.
-    
-    Якщо запит безпечний -> йдемо на переформулювання та пошук.
-    Якщо виявлено injection або порушення лімітів -> миттєво завершуємо граф.
-    """
-    if state.get("is_safe", True):
-        return "safe"
-    return "unsafe"
+    return "safe" if state.get("is_safe", True) else "unsafe"
 
 
-def create_rag_graph() -> StateGraph:
-    """Створює та налаштовує топологію графа LangGraph."""
-    
+def create_rag_graph():
     workflow = StateGraph(GraphState)
 
     workflow.add_node("guard", guard_node)
@@ -57,19 +47,17 @@ app_graph = create_rag_graph()
 
 
 def run_rag_pipeline(query: str, session_id: str = "default_session") -> Dict[str, Any]:
-    """
-    Функція-обгортка для запуску графа з початковим станом.
-    """
     initial_state: GraphState = {
         "query": query,
+        "collection_name": "docs",
+        "context": "",
         "documents": [],
-        "generation": None,
+        "retrieved_docs": [],
+        "generation": "",
         "is_safe": True,
         "rejection_reason": None,
         "source_files": []
     }
 
     config = {"configurable": {"thread_id": session_id}}
-    final_state = app_graph.invoke(initial_state, config=config)
-
-    return final_state
+    return app_graph.invoke(initial_state, config=config)
