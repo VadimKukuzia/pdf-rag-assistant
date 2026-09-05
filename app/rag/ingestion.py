@@ -1,15 +1,15 @@
 import re
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Any
 
-from langchain_community.document_loaders import PyPDFLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_chroma import Chroma
+from langchain_community.document_loaders import PyPDFLoader
 from langchain_core.documents import Document
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
+from app.core.config import policy, settings
 from app.rag.bm25_cache import invalidate_bm25
-from app.core.config import settings, policy
 
 CHROMA_PATH = "./chroma_db"
 
@@ -35,7 +35,7 @@ def get_vectorstore(collection_name: str = "docs") -> Chroma:
     )
 
 
-def get_all_documents(collection_name: str = "docs") -> List[Document]:
+def get_all_documents(collection_name: str = "docs") -> list[Document]:
     vectorstore = get_vectorstore(collection_name=collection_name)
     data = vectorstore.get()
 
@@ -49,7 +49,7 @@ def get_all_documents(collection_name: str = "docs") -> List[Document]:
     return documents
 
 
-def ingest_pdf(file_path: str, collection_name: str = "docs") -> Dict[str, Any]:
+def ingest_pdf(file_path: str, collection_name: str = "docs") -> dict[str, Any]:
     path = Path(file_path)
 
     if not path.exists():

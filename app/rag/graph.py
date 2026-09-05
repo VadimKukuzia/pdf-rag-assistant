@@ -1,13 +1,14 @@
-from typing import Dict, Any
-from langgraph.graph import StateGraph, END
+from typing import Any
+
+from langgraph.graph import END, StateGraph
 
 from app.model.schemas import GraphState
 from app.rag.nodes import (
+    generator_node,
     guard_node,
     rephraser_node,
     retriever_node,
-    generator_node,
-    validator_node
+    validator_node,
 )
 
 
@@ -46,7 +47,7 @@ def create_rag_graph():
 app_graph = create_rag_graph()
 
 
-def run_rag_pipeline(query: str, session_id: str = "default_session") -> Dict[str, Any]:
+def run_rag_pipeline(query: str, session_id: str = "default_session") -> dict[str, Any]:
     initial_state: GraphState = {
         "query": query,
         "collection_name": "docs",

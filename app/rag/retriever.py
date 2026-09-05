@@ -1,14 +1,14 @@
 from typing import Any
 
-from langchain_community.retrievers import BM25Retriever
 from langchain_classic.retrievers import EnsembleRetriever
+from langchain_community.retrievers import BM25Retriever
 
 from app.core.config import settings
-from app.rag.ingestion import get_vectorstore, get_all_documents
 from app.rag.bm25_cache import (
     get_cached_bm25,
     set_cached_bm25,
 )
+from app.rag.ingestion import get_all_documents, get_vectorstore
 
 
 def get_bm25_retriever(

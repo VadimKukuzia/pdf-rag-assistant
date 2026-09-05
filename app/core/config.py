@@ -1,6 +1,6 @@
-import os
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any
+
 import yaml
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     )
 
 
-def load_policy(policy_path: str = "policy.yaml") -> Dict[str, Any]:
+def load_policy(policy_path: str = "policy.yaml") -> dict[str, Any]:
     path = Path(policy_path)
     if not path.exists():
         raise FileNotFoundError(f"❌ Помилка: Файл політик {policy_path} не знайдено!")

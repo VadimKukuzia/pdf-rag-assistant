@@ -1,6 +1,7 @@
-from typing import List, Optional, TypedDict
-from pydantic import BaseModel, Field
+from typing import TypedDict
+
 from langchain_core.documents import Document
+from pydantic import BaseModel, Field
 
 
 class QueryRequest(BaseModel):
@@ -13,7 +14,7 @@ class QueryRequest(BaseModel):
         min_length=3,
         max_length=1000
     )
-    session_id: Optional[str] = Field(
+    session_id: str | None = Field(
         default="default_session",
         description="Ідентифікатор сесії або чату для трейсингу в LangSmith"
     )
@@ -31,7 +32,7 @@ class QueryResponse(BaseModel):
     
     query: str = Field(..., description="Початковий запит користувача")
     answer: str = Field(..., description="Фінальна згенерована відповідь від Gemini")
-    sources: List[SourceChunk] = Field(default_factory=list, description="Список використаних джерел з ChromaDB")
+    sources: list[SourceChunk] = Field(default_factory=list, description="Список використаних джерел з ChromaDB")
     is_safe: bool = Field(default=True, description="Статус проходження перевірки Guardrail")
     status: str = Field(default="success", description="Статус виконання (success / rejected / error)")
 
@@ -64,13 +65,13 @@ class AgentChatResponse(BaseModel):
     
     session_id: str = Field(..., description="Ідентифікатор сесії чату")
     answer: str = Field(..., description="Підсумкова відповідь агента")
-    used_tools: List[str] = Field(default_factory=list, description="Перелік використаних тулзів під час генерації")
+    used_tools: list[str] = Field(default_factory=list, description="Перелік використаних тулзів під час генерації")
 
 
 class SessionHistoryResponse(BaseModel):
     """Відповідь із повною історією повідомлень сесії."""
     session_id: str
-    messages: List[ChatMessage]
+    messages: list[ChatMessage]
 
 
 class GraphState(TypedDict):
@@ -82,12 +83,12 @@ class GraphState(TypedDict):
     collection_name: str
 
     context: str
-    documents: List[Document]
-    retrieved_docs: List[Document]
+    documents: list[Document]
+    retrieved_docs: list[Document]
 
-    generation: Optional[str]
-    answer: Optional[str]
+    generation: str | None
+    answer: str | None
 
     is_safe: bool
-    rejection_reason: Optional[str]
-    source_files: List[str]
+    rejection_reason: str | None
+    source_files: list[str]

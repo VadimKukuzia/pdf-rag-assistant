@@ -1,24 +1,30 @@
+import logging
 import os
 import re
 import shutil
-import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, status
+from fastapi import Depends, FastAPI, File, HTTPException, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import policy
-from app.core.database import init_db, get_db
-from app.model.models import ChatSessionModel, ChatMessageModel
-from app.model.schemas import (
-    QueryRequest, QueryResponse, IngestResponse, SourceChunk,
-    AgentChatRequest, AgentChatResponse, ChatMessage, SessionHistoryResponse
-)
-from app.rag.ingestion import ingest_pdf
-from app.rag.graph import run_rag_pipeline
 from app.agent.agent import run_agent_chat
+from app.core.config import policy
+from app.core.database import get_db, init_db
+from app.model.models import ChatMessageModel, ChatSessionModel
+from app.model.schemas import (
+    AgentChatRequest,
+    AgentChatResponse,
+    ChatMessage,
+    IngestResponse,
+    QueryRequest,
+    QueryResponse,
+    SessionHistoryResponse,
+    SourceChunk,
+)
+from app.rag.graph import run_rag_pipeline
+from app.rag.ingestion import ingest_pdf
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +84,7 @@ async def upload_file(file: UploadFile = File(...)):
         logger.error("Error during PDF ingestion: %s", e, exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Помилка під час індексації документа: {str(e)}"
+            detail=f"Помилка під час індексації документа: {e!s}"
         )
     finally:
         if os.path.exists(temp_file_path):
@@ -187,5 +193,5 @@ async def query_rag(request: QueryRequest):
         logger.error("Direct RAG query error: %s", e, exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Помилка під час обробки запиту: {str(e)}"
+            detail=f"Помилка під час обробки запиту: {e!s}"
         )

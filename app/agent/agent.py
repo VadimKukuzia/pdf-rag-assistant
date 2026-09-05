@@ -1,12 +1,12 @@
 import logging
-from typing import List, Dict, Any
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.messages import HumanMessage, AIMessage
+from typing import Any
 
 from langchain.agents import create_agent
+from langchain_core.messages import AIMessage, HumanMessage
+from langchain_google_genai import ChatGoogleGenerativeAI
 
-from app.core.config import settings
 from app.agent.tools import search_pdf_documents
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +51,7 @@ def get_agent():
 agent_executor = get_agent()
 
 
-def run_agent_chat(message: str, history: List[Dict[str, str]] = None) -> Dict[str, Any]:
+def run_agent_chat(message: str, history: list[dict[str, str]] = None) -> dict[str, Any]:
     messages = []
     for msg in (history or []):
         role = msg.get("role", "user")

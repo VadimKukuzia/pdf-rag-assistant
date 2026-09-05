@@ -1,5 +1,7 @@
 import logging
+
 from langchain_core.tools import tool
+
 from app.rag.graph import run_rag_pipeline
 
 logger = logging.getLogger(__name__)
@@ -29,4 +31,4 @@ def search_pdf_documents(query: str) -> str:
         return f"Знайдений контекст у PDF:\n{context}\n\nСформована витяжка: {answer}"
     except Exception as e:
         logger.error("Error inside search_pdf_documents tool: %s", e, exc_info=True)
-        return f"Помилка виконання RAG-пайплайну: {str(e)}"
+        return f"Помилка виконання RAG-пайплайну: {e!s}"

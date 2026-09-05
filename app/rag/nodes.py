@@ -1,9 +1,10 @@
 import logging
-from typing import Dict, Any
-from langchain_core.messages import SystemMessage, HumanMessage
+from typing import Any
+
+from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 
-from app.core.config import settings, policy
+from app.core.config import policy, settings
 from app.model.schemas import GraphState
 from app.rag.retriever import get_hybrid_retriever
 
@@ -34,7 +35,7 @@ def _extract_text(content: Any) -> str:
     return str(content)
 
 
-def guard_node(state: GraphState) -> Dict[str, Any]:
+def guard_node(state: GraphState) -> dict[str, Any]:
     query = state.get("query", "")
     max_length = policy.get("security", {}).get("prompt_injection", {}).get("max_prompt_length", 1000)
     blocked_keywords = policy.get("security", {}).get("prompt_injection", {}).get("blocked_keywords", [])
@@ -58,7 +59,7 @@ def guard_node(state: GraphState) -> Dict[str, Any]:
     return {"is_safe": True, "rejection_reason": None}
 
 
-def rephraser_node(state: GraphState) -> Dict[str, Any]:
+def rephraser_node(state: GraphState) -> dict[str, Any]:
     if not state.get("is_safe", True):
         return {}
 
@@ -85,7 +86,7 @@ def rephraser_node(state: GraphState) -> Dict[str, Any]:
         return {"query": query}
 
 
-def retriever_node(state: GraphState) -> Dict[str, Any]:
+def retriever_node(state: GraphState) -> dict[str, Any]:
     query = state.get("query", "")
     collection_name = state.get("collection_name", "docs")
 
@@ -106,7 +107,7 @@ def retriever_node(state: GraphState) -> Dict[str, Any]:
     }
 
 
-def generator_node(state: GraphState) -> Dict[str, Any]:
+def generator_node(state: GraphState) -> dict[str, Any]:
     if not state.get("is_safe", True):
         return {}
 
@@ -144,7 +145,7 @@ def generator_node(state: GraphState) -> Dict[str, Any]:
         raise e
 
 
-def validator_node(state: GraphState) -> Dict[str, Any]:
+def validator_node(state: GraphState) -> dict[str, Any]:
     if not state.get("is_safe", True):
         return state
 

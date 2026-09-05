@@ -1,5 +1,4 @@
-import os
-from app.rag.ingestion import ingest_pdf, get_vectorstore
+from app.rag.ingestion import get_vectorstore, ingest_pdf
 
 print("🔍 Перевірка модуля індексації та ChromaDB...")
 

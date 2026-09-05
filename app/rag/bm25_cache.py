@@ -1,6 +1,5 @@
 from langchain_community.retrievers import BM25Retriever
 
-
 _bm25_cache: dict[str, BM25Retriever] = {}
 
 
