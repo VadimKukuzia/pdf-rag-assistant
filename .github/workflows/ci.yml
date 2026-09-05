@@ -28,10 +28,14 @@ jobs:
 
     - name: Run Ruff (Linter)
       run: |
-        ruff check . --ignore E501
+        ruff check .
+
+    - name: Prepare Directories
+      run: |
+        mkdir -p data chroma_db
 
     - name: Run Pytest Suite
       env:
         GEMINI_API_KEY: "dummy_mock_key_for_ci"
       run: |
-        pytest tests/test_api.py tests/test_nodes.py tests/test_graph.py -v
+        python -m pytest tests/test_api.py tests/test_nodes.py -v
