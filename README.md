@@ -3,6 +3,7 @@
 > **Conversational RAG Agent with Tool Calling & Hybrid Search** powered by **LangGraph**, **FastAPI**, **ChromaDB + BM25**, and the **Google Gemini API**.  
 > Features autonomous tool calling, persistent session history via **Async SQLAlchemy + SQLite**, containerization with **Docker**, and full observability via **LangSmith**.
 
+[![CI Pipeline](https://github.com/VadimKukuzia/pdf-rag-assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/VadimKukuzia/pdf-rag-assistant/actions/workflows/ci.yml)
 ![Python Version](https://img.shields.io/badge/Python-3.12%2B-blue)
 ![Framework](https://img.shields.io/badge/LangGraph-Orchestration-orange)
 ![Backend](https://img.shields.io/badge/FastAPI-REST_API-green)
@@ -52,41 +53,46 @@ Unlike rigid linear RAG pipelines, this implementation leverages the **Conversat
 
 ```text
 rag-assistant/
+├── .github/
+│   └── workflows/
+│       └── ci.yml              # GitHub Actions CI pipeline (lint & tests)
 ├── app/
-│   ├── agent/          # Agent runtime and tool definitions
+│   ├── agent/                  # Conversational Agent & tool definitions
 │   │   ├── agent.py
 │   │   └── tools.py
-│   ├── api/            # FastAPI endpoints and route handlers
+│   ├── api/                    # FastAPI REST routes & application lifecycle
 │   │   └── main.py
-│   ├── core/           # Settings, DB session factory, and policy loaders
+│   ├── core/                   # App configurations, async DB engine & policy loader
 │   │   ├── config.py
 │   │   └── database.py
-│   ├── model/          # SQLAlchemy ORM models, Pydantic schemas, GraphState
+│   ├── model/                  # SQLAlchemy ORM models, Pydantic schemas, GraphState
 │   │   ├── models.py
 │   │   └── schemas.py
-│   └── rag/            # LangGraph workflow, nodes, ingestion, hybrid retriever
+│   └── rag/                    # Core RAG components (LangGraph, nodes, hybrid retriever)
 │       ├── bm25_cache.py
 │       ├── graph.py
 │       ├── ingestion.py
 │       ├── nodes.py
 │       └── retriever.py
-├── data_sample/               # Sample documents
-├── tests/              # Test suite (Unit & Integration tests)
+├── data_sample/                # Sample PDF documents for verification
+├── tests/                      # Automated test suite
+│   ├── check_ingestion.py
+│   ├── check_setup.py
 │   ├── test_api.py
 │   ├── test_graph.py
-│   ├── check_setup.py
-│   ├── check_ingestion.py
 │   └── test_nodes.py
-├── ui/                 # Streamlit front-end chat interface
+├── ui/                         # Streamlit chat user interface
 │   └── chat.py
 ├── .dockerignore
-├── .env.example - # Example of needed env file
+├── .env.example
 ├── .gitignore
-├── Dockerfile
 ├── docker-compose.yml
+├── Dockerfile
+├── policy.yaml                 # Security rules, chunking parameters & prompts
+├── pytest.ini                  # Pytest configuration & paths
 ├── requirements.txt
+├── ruff.toml                   # Ruff linter rules & ignores
 └── README.md
-
 ```
 
 ---
@@ -102,7 +108,7 @@ rag-assistant/
 | **Backend Framework** | FastAPI, Uvicorn, Pydantic v2 |
 | **Frontend UI** | Streamlit |
 | **Containerization** | Docker, Docker Compose |
-| **Testing** | Pytest, TestClient |
+| **Testing & CI/CD** | Pytest, TestClient, Ruff, GitHub Actions |
 | **Observability** | LangSmith (Full Execution Tracing) |
 
 ---
@@ -191,7 +197,7 @@ python -m pytest -v
 ---
 
 ## 📸 Demonstration & Screenshots
-
+> *Note: Demonstrated with a sample Ukrainian document.*
 ### 💬 Agent Workflow
 
 1. **Direct chit-chat without retrieving documents:**
