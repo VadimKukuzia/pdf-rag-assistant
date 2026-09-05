@@ -1,86 +1,86 @@
 # RAG Assistant
 
-> **Conversational RAG Agent with Tool Calling & Hybrid Search** на базі **LangGraph**, **FastAPI**, **Hybrid Search (ChromaDB + BM25)** та **Gemini API** з інтелектуальним викликом інструментів (Tool-Calling), збереженням історії сесій в **SQLite**, повною контейнеризацією в **Docker** та трейсингом у **LangSmith**.
+> **Conversational RAG Agent with Tool Calling & Hybrid Search** powered by **LangGraph**, **FastAPI**, **ChromaDB + BM25**, and the **Google Gemini API**.  
+> Features autonomous tool calling, persistent session history via **Async SQLAlchemy + SQLite**, containerization with **Docker**, and full observability via **LangSmith**.
 
 ![Python Version](https://img.shields.io/badge/Python-3.12%2B-blue)
 ![Framework](https://img.shields.io/badge/LangGraph-Orchestration-orange)
 ![Backend](https://img.shields.io/badge/FastAPI-REST_API-green)
 ![Frontend](https://img.shields.io/badge/Streamlit-UI-red)
+![License](https://img.shields.io/badge/License-MIT-lightgrey)
 
-## 📌 Про проєкт
+## 📌 Overview
 
-**RAG Assistant** — це модульна агентна система для ведення діалогу та інтелектуального пошуку інформації у PDF-документах.
+**RAG Assistant** is a modular agentic system designed for multi-turn dialogue and precise context-grounded document question answering across uploaded PDF files.
 
-На відміну від класичних жорстких RAG-пайплайнів, у цій версії реалізовано паттерн **Conversational Tool-Calling Agent**:
+Unlike rigid linear RAG pipelines, this implementation leverages the **Conversational Tool-Calling Agent** pattern:
+1. **Chit-chat & General Inquiries:** The agent answers directly without activating knowledge retrieval tools.
+2. **Context-Dependent Queries:** The agent autonomously triggers the `search_pdf_documents` tool, initiating a dedicated **Hybrid RAG Pipeline** (Sparse BM25 + Dense Semantic Search).
 
-1. **Для звичайного діалогу** агент відповідає без виклику RAG-інструменту.
-2. **Питання щодо змісту PDF** автоматично тригерять виклик інструменту `search_pdf_documents`, який запускає ізольований графовий **Hybrid RAG Pipeline** (Sparse + Dense Search).
-
-
-## 🏗️ Архітектура системи
+## 🏗️ System Architecture
 
 ```text
-[ Користувач / Streamlit UI ]
-              │
-              ▼
-     [ FastAPI Backend ] ─── (/api/v1/chat, /api/v1/upload, /health)
-              │
-              ▼
- [ Conversational Agent ] ─── (Збереження історії: SQLite)
-              │
-     (Потрібен контекст з PDF?)
-              ├── Ні ───► Пряма відповідь користувачу
-              │
-              └── Так ──► [ Tool: search_pdf_documents ]
+[ User / Streamlit Web UI ]
+             │
+             ▼
+    [ FastAPI Backend ] ─── (/api/v1/chat, /api/v1/upload, /health)
+             │
+             ▼
+  [ Conversational Agent ] ─── (Persistent History: SQLite / AsyncSQLAlchemy)
+             │
+     (Requires PDF Context?)
+             ├── No ────► Direct LLM Response
+             │
+             └── Yes ───► [ Tool: search_pdf_documents ]
                                       │
                                       ▼
-                           [ LangGraph RAG Pipeline ]
+                          [ LangGraph RAG Pipeline ]
                                       │
            ┌──────────────────────────┴──────────────────────────┐
-           │ 1. Guard Node (Аналіз безпеки та Prompt Injection)  │
-           │ 2. Rephraser Node (Оптимізація та перефразування)   │
+           │ 1. Guard Node (Security check & Prompt Injection)   │
+           │ 2. Rephraser Node (Query decontextualization)       │
            │ 3. Hybrid Retriever (Ensemble: ChromaDB + BM25)     │
-           │ 4. Generator Node (Синтез відповіді Gemini API)     │
-           │ 5. Validator Node (Перевірка галюцинацій)           │
+           │ 4. Generator Node (Contextual Synthesis via Gemini) │
+           │ 5. Validator Node (Hallucination Detection Guard)   │
            └─────────────────────────────────────────────────────┘
 
 ```
 
 ---
 
-## 📁 Структура проєкту
+## 📁 Project Structure
 
 ```text
 rag-assistant/
 ├── app/
-│   ├── agent/          # AI-Агент та обгортки інструментів (Tools)
+│   ├── agent/          # Agent runtime and tool definitions
 │   │   ├── agent.py
 │   │   └── tools.py
-│   ├── api/            # FastAPI REST API ендпоінти
+│   ├── api/            # FastAPI endpoints and route handlers
 │   │   └── main.py
-│   ├── core/           # Конфігурації (Pydantic Settings, Async DB, policy.yaml)
+│   ├── core/           # Settings, DB session factory, and policy loaders
 │   │   ├── config.py
 │   │   └── database.py
-│   ├── model/          # Async SQLAlchemy моделі та Pydantic DTO / GraphState
+│   ├── model/          # SQLAlchemy ORM models, Pydantic schemas, GraphState
 │   │   ├── models.py
 │   │   └── schemas.py
-│   └── rag/            # Ядро RAG (LangGraph nodes, graph, hybrid retriever, ingestion)
+│   └── rag/            # LangGraph workflow, nodes, ingestion, hybrid retriever
 │       ├── bm25_cache.py
 │       ├── graph.py
 │       ├── ingestion.py
 │       ├── nodes.py
 │       └── retriever.py
-├── data_sample/               # Приклади PDF-документів
-├── tests/              # Набір тестів та перевірок
+├── data_sample/               # Sample documents
+├── tests/              # Test suite (Unit & Integration tests)
 │   ├── test_api.py
 │   ├── test_graph.py
 │   ├── check_setup.py
 │   ├── check_ingestion.py
 │   └── test_nodes.py
-├── ui/                 # Streamlit чат-інтерфейс
+├── ui/                 # Streamlit front-end chat interface
 │   └── chat.py
 ├── .dockerignore
-├── .env.example - мінімально необхідний для запуску файл середовища
+├── .env.example - # Example of needed env file
 ├── .gitignore
 ├── Dockerfile
 ├── docker-compose.yml
@@ -91,9 +91,9 @@ rag-assistant/
 
 ---
 
-## 🛠️ Стек технологій
+## 🛠️ Tech Stack
 
-| Компонент | Технологія |
+| Component | Technology |
 | --- | --- |
 | **LLM & Embeddings** | Google Gemini API (`gemini-3.1-flash-lite`, `models/gemini-embedding-001`) |
 | **Agent & Orchestration** | LangChain Agent (Tool-Calling), LangGraph, LangChain Core |
@@ -107,13 +107,12 @@ rag-assistant/
 
 ---
 
-## 🚀 Швидкий запуск
+## 🚀 Quick Start
 
-### Варіант 1. Запуск через Docker Compose (Рекомендований)
+### Option 1: Docker Compose (Recommended)
+Requires only **Docker Desktop** installed.
 
-Для запуску всієї інфраструктури (FastAPI + Streamlit + ChromaDB + SQLite) потрібен лише встановлений **Docker Desktop**.
-
-1. **Клонуйте репозиторій:**
+1. **Clone the repository:**
 ```bash
 git clone https://github.com/VadimKukuzia/pdf-rag-assistant.git
 cd pdf-rag-assistant
@@ -121,19 +120,19 @@ cd pdf-rag-assistant
 ```
 
 
-2. **Створіть `.env` файл у корені проєкту:**
+2. **Configure environment variables in .env:**
 ```env
 GEMINI_API_KEY="your_gemini_api_key_here"
 
-# Налаштування LangSmith Телеметрії (опціонально)
+# Optional: LangSmith Tracing
 LANGCHAIN_TRACING_V2="true"
 LANGCHAIN_API_KEY="your_langsmith_api_key_here"
-LANGCHAIN_PROJECT="rag-assistant"
+LANGCHAIN_PROJECT="your_langchain_project_name"
 
 ```
 
 
-3. **Запустіть контейнери:**
+3. **Run the services:**
 ```bash
 docker compose up --build
 
@@ -147,9 +146,9 @@ docker compose up --build
 
 ---
 
-### Варіант 2. Локальний запуск для розробки
+### Option 2: Local Setup
 
-1. **Створіть та активуйте віртуальне середовище:**
+1. **Create and activate a virtual environment:**
 ```bash
 python -m venv venv
 # Windows:
@@ -160,28 +159,28 @@ source venv/bin/activate
 ```
 
 
-2. **Встановіть залежності:**
+2. **Install dependencies:**
 ```bash
 pip install -r requirements.txt
 
 ```
 
 
-3. **Запустіть FastAPI Backend:**
+3. **Start the FastAPI backend:**
 ```bash
 python -m uvicorn app.api.main:app --reload
 
 ```
 
 
-4. **Запустіть Streamlit UI (у новому терміналі):**
+4. **Start the Streamlit interface (in a new terminal):**
 ```bash
 streamlit run ui/chat.py
 
 ```
 
 
-5. **Запуск автотестів:**
+5. **Run test suite:**
 ```bash
 python -m pytest -v
 
@@ -191,36 +190,36 @@ python -m pytest -v
 
 ---
 
-## 📸 Скріншоти та демонстрація роботи
+## 📸 Demonstration & Screenshots
 
-### 💬 Спілкування з Агентом (покроковий сценарій)
+### 💬 Agent Workflow
 
-1. **Старт бесіди та звичайний діалог (БЕЗ виклику RAG-інструменту):**
+1. **Direct chit-chat without retrieving documents:**
 <img width="1763" height="955" alt="Screenshot_13-8-2026_0131_localhost" src="https://github.com/user-attachments/assets/6e50cc8b-7666-4daa-a8dd-a799328bb15d" />
 
-2. **Виклик при відсутньому файлі:**
+2. **Question try without documents:**
 <img width="1763" height="955" alt="Screenshot_13-8-2026_01347_localhost" src="https://github.com/user-attachments/assets/e5e4ce7a-2478-4811-9350-4654166bcf5f" />
 
-3. **Завантаження та обробка файлу:**
+3. **PDF ingestion & parsing:**
 <img width="1763" height="955" alt="Screenshot_13-8-2026_01614_localhost" src="https://github.com/user-attachments/assets/04b43f80-89c4-4d77-9225-753e84e2922d" />
 
-4. **Відповідь на основі контексту з джерелами:**
+4. **Context-grounded answer generation with source attribution:**
 <img width="1763" height="955" alt="Screenshot_13-8-2026_01647_localhost" src="https://github.com/user-attachments/assets/114d334c-f3bc-4446-b0f2-4f59b711fadd" />
 
-5. **Відхилення спроби Prompt Injection / Небезпечного запиту:**
+5. **Security Guardrail (Prompt Injection Mitigation):**
 <img width="1763" height="955" alt="Screenshot_13-8-2026_0212_localhost" src="https://github.com/user-attachments/assets/d6ee2ae9-e3ca-4247-84da-6077c110bc15" />
 
 
 ---
 
-### 🌳 Трейсинг виконання в LangSmith
+### 🌳 Observability with LangSmith
 
-На скріншоті видно наскрізний виклик: від звернення до Агента, виклику `search_pdf_documents` до виконання всіх 5 нод графа LangGraph (Guard -> Rephraser -> EnsembleRetriever [Dense + BM25] -> Generator -> Validator):
+Full execution graph trace: tracking the journey from Agent trigger to tool invocation through all 5 LangGraph workflow stages (Guard → Rephraser → EnsembleRetriever → Generator → Validator):
 <img width="1351" height="781" alt="Screenshot_13-8-2026smithjpeg" src="https://github.com/user-attachments/assets/dbb0b2c3-a64a-4f1c-8243-c74c210e8425" />
 
 
 ---
 
-## 📝 Ліцензія
+## 📝 License
 
-Проєкт розповсюджується під ліцензією MIT.
+Distributed under the MIT License. See LICENSE for more details.
