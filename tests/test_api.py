@@ -1,16 +1,13 @@
 from unittest.mock import patch
-
 from fastapi.testclient import TestClient
-
 from app.api.main import app
-
-client = TestClient(app)
 
 
 def test_health_check():
-    response = client.get("/health")
-    assert response.status_code == 200
-    assert response.json() == {"status": "ok", "service": "RAG Assistant API"}
+    with TestClient(app) as client:
+        response = client.get("/health")
+        assert response.status_code == 200
+        assert response.json() == {"status": "ok", "service": "RAG Assistant API"}
 
 
 @patch("app.api.main.run_agent_chat")
@@ -24,7 +21,9 @@ def test_agent_chat_endpoint(mock_run_chat):
         "session_id": "test_session_123",
         "message": "Що описує документ?"
     }
-    response = client.post("/api/v1/chat", json=payload)
+
+    with TestClient(app) as client:
+        response = client.post("/api/v1/chat", json=payload)
 
     assert response.status_code == 200
     data = response.json()
@@ -44,7 +43,8 @@ def test_upload_pdf_endpoint(mock_ingest):
     }
 
     files = {"file": ("sample.pdf", b"%PDF-1.4 test body", "application/pdf")}
-    response = client.post("/api/v1/upload", files=files)
+    with TestClient(app) as client:
+        response = client.post("/api/v1/upload", files=files)
 
     assert response.status_code == 201
     data = response.json()
